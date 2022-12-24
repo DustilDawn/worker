@@ -116,12 +116,21 @@ fastify.post('/api/check', async (req, res) => {
 
   if (hasSameDataWithinElapsedTime(cache, data, 5000)) {
     console.log('Same data found within the specified elapsed time');
+    res
+    .code(500)
+    .header('Content-Type', 'application/json; charset=utf-8')
+    .send({ status: 'nope' });
   } else {
     console.log('No same data found within the specified elapsed time');
     cache.push({
       timestamp: new Date(),
       data: data,
     });
+  
+    res
+    .code(200)
+    .header('Content-Type', 'application/json; charset=utf-8')
+    .send({ status: 'ok' });
   }
 
 });
