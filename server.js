@@ -81,6 +81,17 @@ fastify.get("/", function (request, reply) {
   return reply.view("/src/pages/index.hbs", params);
 });
 
+function hasSameDataWithinElapsedTime(arr, data, elapsedTime) {
+  const now = Date.now();
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const timeDifference = now - arr[i].timestamp;
+    if (timeDifference < elapsedTime && JSON.stringify(arr[i].data) === JSON.stringify(data)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 var cache = [{
   timestamp: '',
   data: '',
@@ -88,14 +99,18 @@ var cache = [{
 
 fastify.post('/test', async (req, res) => {
   
-  var data = {
-    timestamp: new Date(),
-    data: req.body,
-  };
-    
-  cache.push(data);
-  
-  console.log(cache);
+  var data = req.body;
+
+  if (hasSameDataWithinElapsedTime(cache, data, 2000)) {
+    console.log('Same data found within the specified elapsed time');
+  } else {
+    console.log('No same data found within the specified elapsed time');
+    cache.push({
+      timestamp: new Date(),
+      data: data,
+    });
+  }
+
 });
 
 /**
