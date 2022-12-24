@@ -81,9 +81,21 @@ fastify.get("/", function (request, reply) {
   return reply.view("/src/pages/index.hbs", params);
 });
 
+var cache = [{
+  timestamp: '',
+  data: '',
+}];
 
-fastify.get('/test', async (req, res) => {
-  console.log(`Hello! ${req.ip}`);
+fastify.post('/test', async (req, res) => {
+  
+  var data = {
+    timestamp: new Date(),
+    data: req.body,
+  };
+    
+  cache.push(data);
+  
+  console.log(cache);
 });
 
 /**
