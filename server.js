@@ -108,7 +108,7 @@ setInterval(() => {
   }
   
   
-}, 30000);
+}, 60000);
 
 fastify.post('/api/check', async (req, res) => {
   
