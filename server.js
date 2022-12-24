@@ -97,11 +97,24 @@ var cache = [{
   data: '',
 }];
 
-fastify.post('/test', async (req, res) => {
+setInterval(() => {
+    
+  console.log(`cache has length ${cache.length}`);
+  
+  if(cache.length > 0){
+    console.log("clearing now");
+    cache = [];
+    console.log(`cache cleared. Now it has ${cache.length}`);
+  }
+  
+  
+}, 30000);
+
+fastify.post('/api/check', async (req, res) => {
   
   var data = req.body;
 
-  if (hasSameDataWithinElapsedTime(cache, data, 2000)) {
+  if (hasSameDataWithinElapsedTime(cache, data, 5000)) {
     console.log('Same data found within the specified elapsed time');
   } else {
     console.log('No same data found within the specified elapsed time');
