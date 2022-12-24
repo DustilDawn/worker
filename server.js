@@ -63,6 +63,10 @@ fastify.get("/", function (request, reply) {
   return reply.view("/src/pages/index.hbs", params);
 });
 
+fastify.get('/test', async (req, res) => {
+  console.log("Hello!");
+});
+
 /**
  * Our POST route to handle and react to form submissions
  *
@@ -105,6 +109,7 @@ fastify.post("/", function (request, reply) {
   // The Handlebars template will use the parameter values to update the page with the chosen color
   return reply.view("/src/pages/index.hbs", params);
 });
+
 
 // Run the server and report out to the logs
 fastify.listen(
