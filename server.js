@@ -35,23 +35,22 @@ if (seo.url === "glitch-default") {
   seo.url = `https://${process.env.PROJECT_DOMAIN}.glitch.me`;
 }
 
-fastify.register(require('@fastify/cors'), (instance) => {
+fastify.register(require("@fastify/cors"), (instance) => {
   return (req, callback) => {
     const corsOptions = {
       // This is NOT recommended for production as it enables reflection exploits
-      origin: true
+      origin: true,
     };
 
     // do not include CORS headers for requests from localhost
     if (/^localhost$/m.test(req.headers.origin)) {
-      corsOptions.origin = false
+      corsOptions.origin = false;
     }
 
     // callback expects two parameters: error and options
-    callback(null, corsOptions)
-  }
-})
-
+    callback(null, corsOptions);
+  };
+});
 
 /**
  * Our home page route
@@ -85,54 +84,55 @@ function hasSameDataWithinElapsedTime(arr, data, elapsedTime) {
   const now = Date.now();
   for (let i = arr.length - 1; i >= 0; i--) {
     const timeDifference = now - arr[i].timestamp;
-    if (timeDifference < elapsedTime && JSON.stringify(arr[i].data) === JSON.stringify(data)) {
+    if (
+      timeDifference < elapsedTime &&
+      JSON.stringify(arr[i].data) === JSON.stringify(data)
+    ) {
       return true;
     }
   }
   return false;
 }
 
-var cache = [{
-  timestamp: '',
-  data: '',
-}];
+var cache = [
+  {
+    timestamp: "",
+    data: "",
+  },
+];
 
 setInterval(() => {
-    
   console.log(`cache has length ${cache.length}`);
-  
-  if(cache.length > 0){
+
+  if (cache.length > 0) {
     console.log("clearing now");
     cache = [];
     console.log(`cache cleared. Now it has ${cache.length}`);
   }
-  
-  
 }, 60000);
 
-fastify.post('/api/check', async (req, res) => {
-  
+fastify.post("/api/check", async (req, res) => {
   var data = req.body;
 
   if (hasSameDataWithinElapsedTime(cache, data, 5000)) {
-    console.log('Same data found within the specified elapsed time');
+    console.log("Same data found within the specified elapsed time");
+
     res
-    .code(500)
-    .header('Content-Type', 'application/json; charset=utf-8')
-    .send({ status: 'nope' });
+      .code(200)
+      .header("Content-Type", "application/json; charset=utf-8")
+      .send({ status: "nope" });
   } else {
-    console.log('No same data found within the specified elapsed time');
+    console.log("No same data found within the specified elapsed time");
     cache.push({
       timestamp: new Date(),
       data: data,
     });
-  
-    res
-    .code(200)
-    .header('Content-Type', 'application/json; charset=utf-8')
-    .send({ status: 'ok' });
-  }
 
+    res
+      .code(200)
+      .header("Content-Type", "application/json; charset=utf-8")
+      .send({ status: "ok" });
+  }
 });
 
 /**
@@ -177,7 +177,6 @@ fastify.post("/", function (request, reply) {
   // The Handlebars template will use the parameter values to update the page with the chosen color
   return reply.view("/src/pages/index.hbs", params);
 });
-
 
 // Run the server and report out to the logs
 fastify.listen(
