@@ -1,0 +1,18 @@
+[
+  {
+    "task": "chat_message",
+    "params": {
+      "pkp": {
+        "tokenId": "100191347945050940621538641517597309912778558234453265836162145247897523955193",
+        "pubKey": "0x040b1f9dba171e2d62cb244082c7fe83917135bd29c3b4dfa10c6ce7b5d7488844e1fefb0af5a4ca15e8aab45be3e63a1b4082bfea443ed3356a664311639eaf2f",
+        "address": "0x6D30A9F79a35FE3EdE1827F8fd0050ada6fea901",
+        "authorizedAccounts": [
+          "0x65d86B3E0E8B92a0FF6197Cb0fE5847835B78c5e",
+          "0x39CE00bdeF536D494dcdedA6cfe92a926FB7cCA1",
+          "0x019c5821577B1385d6d668d5f3F0DF16A9FA1269"
+        ],
+        "did": "did:pkh:eip155:1:0x6d30a9f79a35fe3ede1827f8fd0050ada6fea901"
+      }
+    }
+  }
+]

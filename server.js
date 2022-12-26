@@ -3,68 +3,267 @@
  * Check out the two endpoints this back-end API provides in fastify.get and fastify.post below
  */
 
-const path = require("path");
+const { PKPWallet } = require('@lit-protocol/pkp-ethers.js-node');
 const WebSocket = require("ws");
-const fs = require("fs");
-const url = "https://ylgfjdlgyjmdikqavpcj.supabase.co"
-const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsZ2ZqZGxneWptZGlrcWF2cGNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NTQ3NTc3NTIsImV4cCI6MTk3MDMzMzc1Mn0.2XdkerM98LhI6q5MBBaXRq75yxOSy-JVbwtTz6Dn9d0";
+require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs');
 const fetch = require("cross-fetch");
-// Require the fastify framework and instantiate it
 const fastify = require("fastify")({
-  // Set this to true for detailed logging:
   logger: false,
 });
-const { PKPWallet } = require('@lit-protocol/pkp-ethers.js-node');
 
-const authSig = { "sig": "0xa527fc31d6330310dac6244218d3e122d07bf93b3f0d5d92b8aa69ec03403c444476d9b625a513683daefe3589cece743348f833a59953374abd39526c8bd5c81b", "derivedVia": "web3.eth.personal.sign", "signedMessage": "localhost:3000 wants you to sign in with your Ethereum account:\n0x019c5821577B1385d6d668d5f3F0DF16A9FA1269\n\n\nURI: http://localhost:3000/\nVersion: 1\nChain ID: 80001\nNonce: V0ho59TkT9p9BpeqC\nIssued At: 2022-12-25T03:27:08.996Z\nExpiration Time: 2027-11-29T03:27:08.988Z", "address": "0x019c5821577B1385d6d668d5f3F0DF16A9FA1269" };
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const AUTH_SIG = process.env.AUTH_SIG;
+const ORBIS_KEY = process.env.ORBIS_KEY;
+let jobs = [];
+let donePosts = [];
+const connections = {};
 
-// (async () => {
-//   let pkpWallet = new PKPWallet({
-//     pkpPubKey: "0x040b1f9dba171e2d62cb244082c7fe83917135bd29c3b4dfa10c6ce7b5d7488844e1fefb0af5a4ca15e8aab45be3e63a1b4082bfea443ed3356a664311639eaf2f",
-//     controllerAuthSig: authSig,
-//     provider: "https://rpc-mumbai.maticvigil.com",
-//   })
-
-//   await pkpWallet.init();
-
-//   const tx = {
-//     to: "0x65d86B3E0E8B92a0FF6197Cb0fE5847835B78c5e",
-//     value: 0
-//   };
-
-//   // -- Sign Transaction
-//   const signedTx = await pkpWallet.signTransaction(tx);
-//   console.log("signedTx:", signedTx);
-
-//   // -- Send Transaction
-//   const sentTx = await pkpWallet.sendTransaction(signedTx);
-//   console.log("sentTx:", sentTx);
-
-// })();
-
-// ADD FAVORITES ARRAY VARIABLE FROM TODO HERE
-
-// Setup our static files
-fastify.register(require("@fastify/static"), {
-  root: path.join(__dirname, "public"),
-  prefix: "/", // optional: default '/'
-});
-
-// Formbody lets us parse incoming forms
-fastify.register(require("@fastify/formbody"));
-
-// View is a templating manager for fastify
-fastify.register(require("@fastify/view"), {
-  engine: {
-    handlebars: require("handlebars"),
-  },
-});
-
-// Load and parse SEO data
-const seo = require("./src/seo.json");
-if (seo.url === "glitch-default") {
-  seo.url = `https://${process.env.PROJECT_DOMAIN}.glitch.me`;
+// load jobs from file
+try {
+  jobs = JSON.parse(fs.readFileSync('jobs.json'));
+} catch (e) {
+  console.log("Error loading jobs.json");
+  console.log(e);
 }
+
+// load done posts from file
+try {
+  donePosts = JSON.parse(fs.readFileSync('done.json'));
+} catch (e) {
+  console.log("Error loading done.json");
+  console.log(e);
+}
+
+
+const indexer = createClient(SUPABASE_URL, ORBIS_KEY);
+
+function saveCache() {
+  console.log("Cache saved");
+  // beautify json before saving
+  const saveJobs = JSON.stringify(jobs, null, 2);
+  const saveDonePosts = JSON.stringify(donePosts, null, 2);
+
+  fs.writeFileSync('jobs.json', saveJobs);
+  fs.writeFileSync('done.json', saveDonePosts);
+}
+process.on('SIGINT', () => {
+  saveCache();
+  process.exit();
+});
+
+// save file when process exits
+process.on('exit', () => {
+  saveCache();
+});
+
+
+var cache = [
+  {
+    timestamp: "",
+    data: "",
+  },
+];
+
+const wss = new WebSocket.Server({ port: 8080, host: "0.0.0.0" });
+
+wss.on('connection', (ws, req) => {
+
+  const connection = req.connection.remoteAddress;
+
+  // console.log(`New WebSocket connection ${connection}`);
+
+  connections[connection] = ws;
+
+  // ws.on('message', (message) => {
+  // console.log(`Received message: ${message}`);
+  // });
+
+});
+
+var lastConnectionsLength;
+var lastJobsLength;
+
+setInterval(() => {
+
+  // only print if the length of connections or jobs has changed
+  if (lastConnectionsLength !== Object.keys(connections).length || lastJobsLength !== jobs.length) {
+    lastConnectionsLength = Object.keys(connections).length;
+    lastJobsLength = jobs.length;
+    const date = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
+    console.log(`[${date}] There are ${lastConnectionsLength} connections and ${lastJobsLength} jobs`);
+  }
+
+}, 2000);
+
+async function infiniteLoop() {
+  while (true) {
+    // for each job
+    for (let i = 0; i < jobs.length; i++) {
+
+      // if job is chat_message
+      if (jobs[i].task === "chat_message") {
+
+        const job = jobs[i];
+        const did = job.params.pkp.did;
+        const pkpPubKey = job.params.pkp.pubKey;
+
+        // did: did:pkh:eip155:1:0x6d30a9f79a35fe3ede1827f8fd0050ada6fea901
+        // pkpPubKey: 0x040b1f9dba171e2d62cb244082c7fe83917135bd29c3b4dfa10c6ce7b5d7488
+        // console.log(`did: ${did}`);
+        // console.log(`pkpPubKey: ${pkpPubKey}`);
+
+        // ignore job if counter is more than 0
+        // if(job.counter > 0){
+        //   continue;
+        // }
+
+        var posts;
+
+        var page = 0;
+        // continue;
+
+        try {
+          // fetch orbis posts by did
+          posts = await indexer.rpc("all_did_master_posts", {
+            post_did: did,
+          }).range(page * 50, (page + 1) * 50 - 1);
+
+          posts = posts.data;
+        } catch (e) {
+          console.log(e);
+          // clearInterval(interval);
+        }
+
+        if (posts) {
+          for (let j = 0; j < posts.length; j++) {
+
+            var post = posts[j];
+
+            const streamId = post.stream_id;
+            const content = post.content.body;
+            const timestamp = post.timestamp;
+            const creatorDid = post.creator;
+            const creatorAddress = post.creator_details.metadata.address;
+
+            // ignore posts older than 5 minutes
+            // 300000 = 5 mins
+            if ((timestamp * 1000) < (Date.now() - 9000000)) {
+              continue;
+            }
+
+            // ignore if post is already done
+            if (donePosts.includes(post.stream_id)) {
+              continue;
+            }
+
+
+            // if command is /test
+            // /test 0x65d86B3E0E8B92a0FF6197Cb0fE5847835B78c5e 1
+            if (content.includes("/test")) {
+              // 
+              console.log("Found test message");
+              console.log(content);
+
+              var commands = content.split(' ');
+              const address = commands[1];
+              const amount = commands[2];
+
+              let pkpWallet = new PKPWallet({
+                pkpPubKey: pkpPubKey,
+                controllerAuthSig: JSON.parse(AUTH_SIG),
+                provider: "https://rpc-mumbai.maticvigil.com",
+              })
+              await pkpWallet.init();
+
+              const tx = {
+                to: address,
+                value: parseInt(amount),
+              };
+
+              console.log(tx);
+
+              var signedTx;
+              var sentTx;
+
+              console.log("signing transaction");
+              try {
+                signedTx = await pkpWallet.signTransaction(tx);
+              } catch (e) {
+                console.log("Error signing transaction");
+                console.log(e);
+                return;
+              }
+
+              console.log("sending transaction");
+              try {
+                sentTx = await pkpWallet.sendTransaction(signedTx);
+              } catch (e) {
+                console.log("Error sending transaction");
+                console.log(e);
+                return;
+              }
+
+              console.log("Sent transaction");
+
+              // save it to done tasks if not already done
+              if (!donePosts.includes(streamId)) {
+                donePosts.push(streamId);
+              }
+
+            }
+
+            // /send [amount] to [address] [hourly]
+            else if (content.includes('/send')) {
+              // send payment
+              console.log("Found send message");
+              console.log(content);
+            }
+          }
+        }
+
+      }
+    }
+
+    // var str = (await res.json());
+    // // filter out item.content.body include the keyword "/test"
+    // str = str.filter(item => item.content.body.includes("/test"));
+    // str = JSON.stringify(str);
+    // ws.send(str);
+    // ws.send(JSON.stringify(jobs));
+
+    // for each connection, send message
+    for (const connection in connections) {
+      connections[connection].send(JSON.stringify(jobs));
+    }
+  }
+}
+infiniteLoop();
+
+setInterval(() => {
+  if (cache.length > 0) {
+    console.log(`cache has length ${cache.length}`);
+    console.log("clearing now");
+    cache = [];
+    console.log(`cache cleared. Now it has ${cache.length}`);
+  }
+}, 60000);
+
+function hasSameDataWithinElapsedTime(arr, data, elapsedTime) {
+  const now = Date.now();
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const timeDifference = now - arr[i].timestamp;
+    if (
+      timeDifference < elapsedTime &&
+      JSON.stringify(arr[i].data) === JSON.stringify(data)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 
 fastify.register(require("@fastify/cors"), (instance) => {
   return (req, callback) => {
@@ -83,64 +282,7 @@ fastify.register(require("@fastify/cors"), (instance) => {
   };
 });
 
-/**
- * Our home page route
- *
- * Returns src/pages/index.hbs with data built into it
- */
-fastify.get("/", function (request, reply) {
-  // params is an object we'll pass to our handlebars template
-  let params = { seo: seo };
 
-  // If someone clicked the option for a random color it'll be passed in the querystring
-  if (request.query.randomize) {
-    // We need to load our color data file, pick one at random, and add it to the params
-    const colors = require("./src/colors.json");
-    const allColors = Object.keys(colors);
-    let currentColor = allColors[(allColors.length * Math.random()) << 0];
-
-    // Add the color properties to the params object
-    params = {
-      color: colors[currentColor],
-      colorError: null,
-      seo: seo,
-    };
-  }
-
-  // The Handlebars code will be able to access the parameter values and build them into the page
-  return reply.view("/src/pages/index.hbs", params);
-});
-
-function hasSameDataWithinElapsedTime(arr, data, elapsedTime) {
-  const now = Date.now();
-  for (let i = arr.length - 1; i >= 0; i--) {
-    const timeDifference = now - arr[i].timestamp;
-    if (
-      timeDifference < elapsedTime &&
-      JSON.stringify(arr[i].data) === JSON.stringify(data)
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-var cache = [
-  {
-    timestamp: "",
-    data: "",
-  },
-];
-
-setInterval(() => {
-  console.log(`cache has length ${cache.length}`);
-
-  if (cache.length > 0) {
-    console.log("clearing now");
-    cache = [];
-    console.log(`cache cleared. Now it has ${cache.length}`);
-  }
-}, 60000);
 
 fastify.post("/api/check", async (req, res) => {
   var data = req.body;
@@ -164,100 +306,6 @@ fastify.post("/api/check", async (req, res) => {
       .header("Content-Type", "application/json; charset=utf-8")
       .send({ status: "ok" });
   }
-});
-
-// https://ylgfjdlgyjmdikqavpcj.supabase.co/rest/v1/orbis_v_profiles?select=*&did=eq.did%3Apkh%3Aeip155%3A1%3A0x6d30a9f79a35fe3ede1827f8fd0050ada6fea901
-// accepted type: "chat_message"
-const jobs = []
-
-const wss = new WebSocket.Server({ port: 8080, host: "0.0.0.0" });
-wss.on('connection', (ws) => {
-  console.log('New WebSocket connection');
-
-  ws.on('message', (message) => {
-    // console.log(`Received message: ${message}`);
-  });
-
-  setInterval(async () => {
-    // const res = await fetch(url + "/rest/v1/rpc/default_posts_alpha?offset=0&limit=50&order=timestamp.desc.nullslast", {
-    //   headers: { apiKey }
-    // });
-
-    console.log(jobs);
-
-    // for each job
-    for (let i = 0; i < jobs.length; i++) {
-
-      // if job is chat_message
-      if (jobs[i].task === "chat_message") {
-
-        const did = jobs[i].params.pkp.did;
-        const pkpPubKey = jobs[i].params.pkp.pubKey;
-
-        // fetch orbis posts by did
-        const res = await fetch(url + `/rest/v1/rpc/default_posts_alpha?offset=0&limit=50&order=timestamp.desc.nullslast`, {
-          method: 'POST',
-          body: JSON.stringify({ "q_did": did, "q_tag": null, "q_only_master": false, "q_context": null, "q_master": null }),
-          headers: { apiKey }
-        });
-
-        const posts = await res.json();
-
-        var commands;
-
-        try {
-          commands = posts?.filter(post => post.content.body.includes("/test"));
-
-          for (let j = 0; j < commands.length; j++) {
-
-            const body = commands[j].content.body;
-
-            let pkpWallet = new PKPWallet({
-              pkpPubKey: pkpPubKey,
-              controllerAuthSig: authSig,
-              provider: "https://rpc-mumbai.maticvigil.com",
-            })
-
-            await pkpWallet.init();
-
-            const tx = {
-              to: "0x65d86B3E0E8B92a0FF6197Cb0fE5847835B78c5e",
-              value: 0
-            };
-
-            // -- Sign Transaction
-            const signedTx = await pkpWallet.signTransaction(tx);
-            console.log("signedTx:", signedTx);
-
-            // -- Send Transaction
-            const sentTx = await pkpWallet.sendTransaction(signedTx);
-            console.log("sentTx:", sentTx);
-
-            // if command is /test
-            if (body.includes("/test")) {
-              // 
-            }
-
-            // /send [amount] to [address] [hourly]
-            else if (body.includes('/send')) {
-              // send payment
-            }
-          }
-        } catch (e) {
-          // 
-          console.log(e);
-        }
-
-      }
-    }
-
-    // var str = (await res.json());
-    // // filter out item.content.body include the keyword "/test"
-    // str = str.filter(item => item.content.body.includes("/test"));
-    // str = JSON.stringify(str);
-    // ws.send(str);
-    ws.send(JSON.stringify(jobs));
-  }, 10000);
 });
 
 fastify.post('/api/job', async (req, res) => {
@@ -305,48 +353,30 @@ fastify.post('/api/job', async (req, res) => {
   }
 
 })
-/**
- * Our POST route to handle and react to form submissions
- *
- * Accepts body data indicating the user choice
- */
-fastify.post("/", function (request, reply) {
-  // Build the params object to pass to the template
-  let params = { seo: seo };
 
-  // If the user submitted a color through the form it'll be passed here in the request body
-  let color = request.body.color;
+fastify.post('/api/has/job', async (req, res) => {
+  var data = req.body;
 
-  // If it's not empty, let's try to find the color
-  if (color) {
-    // ADD CODE FROM TODO HERE TO SAVE SUBMITTED FAVORITES
+  const pkpAddress = data.params.pkp.address;
 
-    // Load our color data file
-    const colors = require("./src/colors.json");
+  // check if address has been pushed to jobs array already with the same task name
+  // if yes, then don't push it again
+  // if no, then push it to jobs array
+  if (jobs.filter(job => job.params.pkp.address === pkpAddress).length === 0) {
 
-    // Take our form submission, remove whitespace, and convert to lowercase
-    color = color.toLowerCase().replace(/\s/g, "");
-
-    // Now we see if that color is a key in our colors object
-    if (colors[color]) {
-      // Found one!
-      params = {
-        color: colors[color],
-        colorError: null,
-        seo: seo,
-      };
-    } else {
-      // No luck! Return the user value as the error property
-      params = {
-        colorError: request.body.color,
-        seo: seo,
-      };
-    }
+    res
+      .code(200)
+      .header("Content-Type", "application/json; charset=utf-8")
+      .send({ status: "no job" });
+  }
+  else {
+    res
+      .code(200)
+      .header("Content-Type", "application/json; charset=utf-8")
+      .send({ status: "job exists" });
   }
 
-  // The Handlebars template will use the parameter values to update the page with the chosen color
-  return reply.view("/src/pages/index.hbs", params);
-});
+})
 
 // Run the server and report out to the logs
 fastify.listen(
@@ -359,13 +389,3 @@ fastify.listen(
     console.log(`Your app is listening on ${address}`);
   }
 );
-
-// write the jobs data to a file
-// setInterval(() => {
-//   fs.writeFile(
-//     "./src/jobs.json",
-//     JSON.stringify(jobs),
-//     (err) => console.log(err)
-//   );
-// }
-// , 10000);
