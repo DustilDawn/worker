@@ -21,19 +21,21 @@ let donePosts = [];
 const connections = {};
 
 // load jobs from file
+log("Loading jobs.json");
 try {
-  jobs = JSON.parse(fs.readFileSync('jobs.json'));
+  jobs = JSON.parse((fs.readFileSync('jobs.json')).toString())
 } catch (e) {
-  console.log("Error loading jobs.json");
-  console.log(e);
+  log("Error loading jobs.json");
+  jobs = [];
 }
 
 // load done posts from file
+log("Loading done.json");
 try {
-  donePosts = JSON.parse(fs.readFileSync('done.json'));
+  donePosts = JSON.parse((fs.readFileSync('done.json')).toString())
 } catch (e) {
-  console.log("Error loading done.json");
-  console.log(e);
+  log("Error loading done.json");
+  donePosts = [];
 }
 
 
@@ -41,9 +43,9 @@ const indexer = createClient(SUPABASE_URL, ORBIS_KEY);
 
 function log(msg) {
   let date = getNow();
-  let logMsg = `[${date}] ${msg}\n`;
+  let logMsg = `[${date}] ${msg}`;
   console.log(logMsg);
-  fs.appendFile('log.txt', logMsg, () => {});
+  fs.appendFile('log.txt', logMsg + '\n', () => {});
 }
 
 function saveCache() {
@@ -221,12 +223,12 @@ async function infiniteLoop() {
                 return;
               }
 
-              console.log(`[[${getNow()}]] Sent transaction`);
+              log("Sent transaction");
 
               // save it to done tasks if not already done
               if (!donePosts.includes(streamId)) {
                 donePosts.push(streamId);
-                console.log(`[[${getNow()}]] Archived ${streamId}`);
+                log(`Archived ${streamId}`);
               }
 
             }
@@ -340,7 +342,7 @@ fastify.post('/api/job', async (req, res) => {
         .code(200)
         .header("Content-Type", "application/json; charset=utf-8")
         .send({ status: "ok" });
-      log(`a new job has been added ${data.params.pkp.address}`);
+      log(`a new job has been added ${JSON.stringify(data.params.pkp.address)}`);
     } else {
       res
         .code(200)
@@ -371,8 +373,9 @@ fastify.post('/api/job', async (req, res) => {
       .header("Content-Type", "application/json; charset=utf-8")
       .send({ status: 500, message: "unrecognized task" });
     log(`job not recognized ${data.params.task}`);
-
   }
+
+  console.log("data => ", data);
 
 })
 
