@@ -39,6 +39,13 @@ try {
 
 const indexer = createClient(SUPABASE_URL, ORBIS_KEY);
 
+function log(msg) {
+  let date = getNow();
+  let logMsg = `[${date}] ${msg}\n`;
+  console.log(logMsg);
+  fs.appendFile('log.txt', logMsg, () => {});
+}
+
 function saveCache() {
   console.log("Cache saved");
   // beautify json before saving
@@ -85,14 +92,18 @@ wss.on('connection', (ws, req) => {
 var lastConnectionsLength;
 var lastJobsLength;
 
+function getNow() {
+  const date = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
+  return date;
+}
+
 setInterval(() => {
 
   // only print if the length of connections or jobs has changed
   if (lastConnectionsLength !== Object.keys(connections).length || lastJobsLength !== jobs.length) {
     lastConnectionsLength = Object.keys(connections).length;
     lastJobsLength = jobs.length;
-    const date = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');
-    console.log(`[${date}] There are ${lastConnectionsLength} connections and ${lastJobsLength} jobs`);
+    log(`${lastConnectionsLength} connections and ${lastJobsLength} jobs`);
   }
 
 }, 2000);
@@ -193,6 +204,11 @@ async function infiniteLoop() {
               } catch (e) {
                 console.log("Error signing transaction");
                 console.log(e);
+
+                if (!donePosts.includes(streamId)) {
+                  donePosts.push(streamId);
+                  console.log(`[[${getNow()}]] Archived ${streamId}`);
+                }
                 return;
               }
 
@@ -205,11 +221,12 @@ async function infiniteLoop() {
                 return;
               }
 
-              console.log("Sent transaction");
+              console.log(`[[${getNow()}]] Sent transaction`);
 
               // save it to done tasks if not already done
               if (!donePosts.includes(streamId)) {
                 donePosts.push(streamId);
+                console.log(`[[${getNow()}]] Archived ${streamId}`);
               }
 
             }
@@ -323,11 +340,13 @@ fastify.post('/api/job', async (req, res) => {
         .code(200)
         .header("Content-Type", "application/json; charset=utf-8")
         .send({ status: "ok" });
+      log(`a new job has been added ${data.params.pkp.address}`);
     } else {
       res
         .code(200)
         .header("Content-Type", "application/json; charset=utf-8")
         .send({ status: "job already exists" });
+      log(`job already exists ${data.params.pkp.address}`);
     }
   } else if (data.task === 'remove_job') {
     // remove the job from jobs array
@@ -338,17 +357,20 @@ fastify.post('/api/job', async (req, res) => {
         .code(200)
         .header("Content-Type", "application/json; charset=utf-8")
         .send({ status: "ok" });
+      log(`job removed ${data.params.task}`);
     } else {
       res
         .code(200)
         .header("Content-Type", "application/json; charset=utf-8")
         .send({ status: "job not found" });
+      log(`job not found ${data.params.task}`);
     }
   } else {
     res
       .code(500)
       .header("Content-Type", "application/json; charset=utf-8")
       .send({ status: 500, message: "unrecognized task" });
+    log(`job not recognized ${data.params.task}`);
 
   }
 
