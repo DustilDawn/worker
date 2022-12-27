@@ -1,21 +1,27 @@
-[2022-12-26 18:18:53] Loading jobs.json
-[2022-12-26 18:18:53] Loading done.json
-[2022-12-26 18:18:55] 0 connections and 1 jobs
-[2022-12-26 18:20:38] job already exists 0x6D30A9F79a35FE3EdE1827F8fd0050ada6fea901
-[2022-12-26 18:21:07] job removed chat_message
-[2022-12-26 18:21:09] 0 connections and 0 jobs
-[2022-12-26 18:21:12] a new job has been added "0x6D30A9F79a35FE3EdE1827F8fd0050ada6fea901"
-[2022-12-26 18:21:13] 0 connections and 1 jobs
-[2022-12-26 18:21:14] job removed chat_message
-[2022-12-26 18:21:15] 0 connections and 0 jobs
-[2022-12-26 18:21:16] a new job has been added "0x6D30A9F79a35FE3EdE1827F8fd0050ada6fea901"
-[2022-12-26 18:21:17] job removed chat_message
-[2022-12-26 18:21:19] a new job has been added "0x6D30A9F79a35FE3EdE1827F8fd0050ada6fea901"
-[2022-12-26 18:21:19] 0 connections and 1 jobs
-[2022-12-26 18:21:21] job removed chat_message
-[2022-12-26 18:21:21] 0 connections and 0 jobs
-[2022-12-26 18:22:13] 1 connections and 0 jobs
-[2022-12-26 18:22:44] a new job has been added "0x6D30A9F79a35FE3EdE1827F8fd0050ada6fea901"
-[2022-12-26 18:22:45] 1 connections and 1 jobs
-[2022-12-26 18:23:08] job removed chat_message
-[2022-12-26 18:23:09] 1 connections and 0 jobs
+[2022-12-26 21:48:52] Loading jobs.json
+[2022-12-26 21:48:52] Job loaded
+[2022-12-26 21:48:52] Loading done.json
+[2022-12-26 21:48:52] Done posts loaded
+[2022-12-26 21:48:54] 0 connections and 0 jobs
+[2022-12-26 21:48:54] no jobs found. contiune.
+[2022-12-26 21:49:27] a new job has been added "0x6D30A9F79a35FE3EdE1827F8fd0050ada6fea901"
+[2022-12-26 21:49:28] 0 connections and 1 jobs
+[2022-12-26 21:49:50] 1 connections and 1 jobs
+[2022-12-26 21:52:18] Loading jobs.json
+[2022-12-26 21:52:18] Job loaded
+[2022-12-26 21:52:18] Loading done.json
+[2022-12-26 21:52:18] Done posts loaded
+[2022-12-26 21:52:20] 0 connections and 1 jobs
+[2022-12-26 21:53:45] Sent transaction
+[2022-12-26 21:53:45] Archived kjzl6cwe1jw146f2lscxiifmgs7s5e4czwg4gb47j6mv0gxl312o00str1692ze
+[2022-12-26 21:57:48] 1 connections and 1 jobs
+[2022-12-26 22:02:12] Loading jobs.json
+[2022-12-26 22:02:12] Loading done.json
+[2022-12-26 22:02:12] Job loaded
+[2022-12-26 22:02:12] Done posts loaded
+[2022-12-26 22:02:14] 0 connections and 1 jobs
+[2022-12-26 22:38:41] 1 connections and 1 jobs
+[2022-12-27 02:47:37] Sent transaction
+[2022-12-27 02:47:37] Archived kjzl6cwe1jw1496lyfpgyiu23w83ygsljhoqbisncwhxvfjwwk8wlrav6dz4spe
+[2022-12-27 03:06:15] a new job has been added "0xe8B28132b368E605436553b5Cc4d9B29C833De0A"
+[2022-12-27 03:06:15] 1 connections and 2 jobs

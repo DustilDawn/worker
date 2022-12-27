@@ -13,6 +13,8 @@ const fastify = require("fastify")({
   logger: false,
 });
 
+PORT = 8081;
+WS_PORT = 8080;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const AUTH_SIG = process.env.AUTH_SIG;
 const ORBIS_KEY = process.env.ORBIS_KEY;
@@ -24,6 +26,7 @@ const connections = {};
 log("Loading jobs.json");
 try {
   jobs = JSON.parse((fs.readFileSync('jobs.json')).toString())
+  log("Job loaded");
 } catch (e) {
   log("Error loading jobs.json");
   jobs = [];
@@ -33,11 +36,11 @@ try {
 log("Loading done.json");
 try {
   donePosts = JSON.parse((fs.readFileSync('done.json')).toString())
+  log("Done posts loaded");
 } catch (e) {
   log("Error loading done.json");
   donePosts = [];
 }
-
 
 const indexer = createClient(SUPABASE_URL, ORBIS_KEY);
 
@@ -45,18 +48,15 @@ function log(msg) {
   let date = getNow();
   let logMsg = `[${date}] ${msg}`;
   console.log(logMsg);
-  fs.appendFile('log.txt', logMsg + '\n', () => {});
+  fs.appendFile('log.txt', logMsg + '\n', () => { });
 }
 
 function saveCache() {
-  console.log("Cache saved");
-  // beautify json before saving
-  const saveJobs = JSON.stringify(jobs, null, 2);
-  const saveDonePosts = JSON.stringify(donePosts, null, 2);
-
-  fs.writeFileSync('jobs.json', saveJobs);
-  fs.writeFileSync('done.json', saveDonePosts);
+  log("Cache saved");
+  fs.writeFileSync('jobs.json', JSON.stringify(jobs, null, 2));
+  fs.writeFileSync('done.json', JSON.stringify(donePosts, null, 2));
 }
+
 process.on('SIGINT', () => {
   saveCache();
   process.exit();
@@ -67,7 +67,6 @@ process.on('exit', () => {
   saveCache();
 });
 
-
 var cache = [
   {
     timestamp: "",
@@ -75,7 +74,7 @@ var cache = [
   },
 ];
 
-const wss = new WebSocket.Server({ port: 8080, host: "0.0.0.0" });
+const wss = new WebSocket.Server({ port: WS_PORT, host: "0.0.0.0" });
 
 wss.on('connection', (ws, req) => {
 
@@ -110,9 +109,27 @@ setInterval(() => {
 
 }, 2000);
 
+var state = '';
+
 async function infiniteLoop() {
+
   while (true) {
-    // for each job
+
+    // delay 2 seconds
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // skip while loop
+    if (jobs.length === 0) {
+
+      var msg = "no jobs found. contiune.";
+
+      if (state !== msg) {
+        state
+        log(msg);
+      }
+      continue;
+    }
+
     for (let i = 0; i < jobs.length; i++) {
 
       // if job is chat_message
@@ -126,11 +143,6 @@ async function infiniteLoop() {
         // pkpPubKey: 0x040b1f9dba171e2d62cb244082c7fe83917135bd29c3b4dfa10c6ce7b5d7488
         // console.log(`did: ${did}`);
         // console.log(`pkpPubKey: ${pkpPubKey}`);
-
-        // ignore job if counter is more than 0
-        // if(job.counter > 0){
-        //   continue;
-        // }
 
         var posts;
 
@@ -157,8 +169,8 @@ async function infiniteLoop() {
             const streamId = post.stream_id;
             const content = post.content.body;
             const timestamp = post.timestamp;
-            const creatorDid = post.creator;
-            const creatorAddress = post.creator_details.metadata.address;
+            // const creatorDid = post.creator;
+            // const creatorAddress = post.creator_details.metadata.address;
 
             // ignore posts older than 5 minutes
             // 300000 = 5 mins
@@ -172,9 +184,9 @@ async function infiniteLoop() {
             }
 
 
-            // if command is /test
-            // /test 0x65d86B3E0E8B92a0FF6197Cb0fE5847835B78c5e 1
-            if (content.includes("/test")) {
+            // if command is /send
+            // /send 0x65d86B3E0E8B92a0FF6197Cb0fE5847835B78c5e 1
+            if (content.includes("/send")) {
               // 
               console.log("Found test message");
               console.log(content);
@@ -233,12 +245,6 @@ async function infiniteLoop() {
 
             }
 
-            // /send [amount] to [address] [hourly]
-            else if (content.includes('/send')) {
-              // send payment
-              console.log("Found send message");
-              console.log(content);
-            }
           }
         }
 
@@ -405,7 +411,7 @@ fastify.post('/api/has/job', async (req, res) => {
 
 // Run the server and report out to the logs
 fastify.listen(
-  { port: 8081, host: "0.0.0.0" },
+  { port: PORT, host: "0.0.0.0" },
   function (err, address) {
     if (err) {
       console.error(err);

@@ -1,4 +1,13 @@
-const fs = require('fs');
+// create an sample fastify app
+const fastify = require('fastify')()
 
-var text = JSON.parse((fs.readFileSync('jobs.json')).toString());
-console.log(text);
+fastify.get('/', (req, reply) => {
+    reply.send({ hello: 'world' })
+});
+
+// listen
+fastify.listen(3000, (err) => {
+    if (err) throw err
+    console.log(`server listening on ${fastify.server.address().port}`)
+}
+)

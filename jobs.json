@@ -2,6 +2,7 @@
   {
     "task": "chat_message",
     "params": {
+      "task": "chat_message",
       "pkp": {
         "tokenId": "100191347945050940621538641517597309912778558234453265836162145247897523955193",
         "pubKey": "0x040b1f9dba171e2d62cb244082c7fe83917135bd29c3b4dfa10c6ce7b5d7488844e1fefb0af5a4ca15e8aab45be3e63a1b4082bfea443ed3356a664311639eaf2f",
